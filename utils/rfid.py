@@ -1,14 +1,14 @@
-from time import sleep
+import time
 
 import ubinascii
 from machine import UART, Pin, Timer
 
 
 class RFIDReader:
-    def __init__(self, logEnabled=False):
+    def __init__(self, gpioPin, logEnabled=False):
         self.uart = UART(0)
         self.uart.init(
-            baudrate=9600, bits=8, parity=None, stop=1, rx=Pin(1, mode=Pin.IN)
+            baudrate=9600, bits=8, parity=None, stop=1, rx=Pin(gpioPin, mode=Pin.IN)
         )
 
         self.read_allowed = True
@@ -87,9 +87,18 @@ class RFIDReader:
         # return a string of the decimal (integer) representation
         return str(int(card_id, 16))
 
-    def read_single_chip(self):
+    def read_single_chip(self, timeout_ms=None):
         self.read_allowed = True
+        start_time = time.ticks_ms()
+
         while True:
+            if (
+                timeout_ms is not None
+                and time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms
+            ):
+                self.log("Timeout reached for single chip read.")
+                return None
+
             data = self.uart.read()
 
             if data is not None and self.read_allowed:
@@ -105,9 +114,17 @@ class RFIDReader:
                 self.log("Single shot run: The chip id is:", parsed)
                 return parsed
 
-    def detect_chip_with_id(self, target_id):
+    def detect_chip_with_id(self, target_id, timeout_ms=None):
         self.read_allowed = True
+        start_time = time.ticks_ms()
+
         while True:
+            if (
+                timeout_ms is not None
+                and time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms
+            ):
+                self.log("Timeout reached for specific chip read.")
+                return None
             data = self.uart.read()
 
             if data is not None and self.read_allowed:
@@ -124,12 +141,22 @@ class RFIDReader:
                     self.log("Run until {}: The chip id is:".format(target_id), parsed)
                     return parsed
 
-    def read_continuously(self, shouldStop=False):
+    def read_continuously(self, shouldStop=False, timeout_ms=None):
         self.read_allowed = True
+        start_time = time.ticks_ms()
+
         self.start_reset_timer()
+
         while not shouldStop:
             if not self.read_allowed:
                 continue
+
+            if (
+                timeout_ms is not None
+                and time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms
+            ):
+                self.log("Timeout reached for continuous chip read.")
+                return None
 
             data = self.uart.read()
 
