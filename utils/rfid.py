@@ -63,11 +63,14 @@ def parse_packet(packet):
 
 
 readAllowed = True
+lastChipId = ""
 
 
 def resetLastChip(self):
     global readAllowed
+    global lastChipId
     readAllowed = True
+    lastChipId = ""
 
 
 uart = UART(0)
@@ -77,7 +80,6 @@ resetTimer = Timer()
 resetTimer.deinit()
 resetTimer.init(period=1000, mode=Timer.PERIODIC, callback=resetLastChip)
 
-lastChipId = ""
 while True:
     data = uart.read()
 
